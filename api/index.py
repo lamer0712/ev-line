@@ -153,22 +153,35 @@ PAGE = """<!doctype html>
       let favorites = JSON.parse(localStorage.getItem(favKey) || "[]");
       let showAll = localStorage.getItem("evline_show_all") !== "0";
 
-      function saveFavs() { localStorage.setItem(favKey, json.stringify(favorites)); }
+      function saveFavs() { localStorage.setItem(favKey, JSON.stringify(favorites)); }
       function updateToggleText() { toggleView.textContent = showAll ? "즐겨찾기만" : "전체보기"; }
 
       function applyFilter() {
         cards.forEach(card => {
-          const g = card.getAttribute("data-group");
+          const g = card.getAttribute("data-group").toUpperCase();
           const isFav = favorites.includes(g);
+          
           if (isFav) card.classList.add("is-favorite");
           else card.classList.remove("is-favorite");
-          card.style.display = (showAll || isFav) ? "flex" : "none";
+          
+          // 핵심 필터 변경 로직: 
+          // showAll(전체보기) 상태면 무조건 다 보여주고,
+          // 즐겨찾기 상태일 때는 오직 D그룹과 E그룹이면서 동시에 즐겨찾기 등록된 것만 활성화
+          if (showAll) {
+            card.style.display = "flex";
+          } else {
+            if ((g === "D" || g === "E") && isFav) {
+              card.style.display = "flex";
+            } else {
+              card.style.display = "none";
+            }
+          }
         });
       }
 
       cards.forEach(card => {
         const btn = card.querySelector(".favorite");
-        const g = card.getAttribute("data-group");
+        const g = card.getAttribute("data-group").toUpperCase();
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           if (favorites.includes(g)) favorites = favorites.filter(x => x !== g);
@@ -194,9 +207,6 @@ PAGE = """<!doctype html>
 """
 
 def get_authenticated_session():
-    """
-    Vercel의 읽기 전용 제약을 우회하기 위해 Memory 상에서 requests.Session 객체로 세션을 관리합니다.
-    """
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari/537.36"
@@ -217,9 +227,6 @@ def get_authenticated_session():
     return session
 
 def fetch_and_parse_detail(session, detail_id):
-    """
-    기존 bash curl + iconv + perl 매칭을 완벽히 대체하는 동적 순수 파이썬 데이터 수집 핸들러입니다.
-    """
     url = f"{BASE_URL}/charge/mapdatadetail_202008.asp?id={detail_id}"
     headers = {
         "Accept": "*/*",
@@ -234,7 +241,6 @@ def fetch_and_parse_detail(session, detail_id):
     except Exception as e:
         return f"데이터 패치 실패: {str(e)}"
 
-    # JSON 데이터 래핑 제거
     marker = '[{"id":"'
     if raw_html.startswith(marker) and raw_html.endswith('"}]'):
         raw_html = raw_html[len(marker):-3]
@@ -303,10 +309,8 @@ class handler(BaseHTTPRequestHandler):
         station = parse_station_name(raw_html)
         formatted_body = render_dashboard(raw_html)
 
-        # KST(UTC+9) 시간 반영 보정
         updated = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
 
-        # 명시적 문자열 치환 기법을 통해 CSS 구문 훼손 방지
         response_html = PAGE
         response_html = response_html.replace("__UPDATED__", html.escape(updated))
         response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station)}</div>' if station else "")
