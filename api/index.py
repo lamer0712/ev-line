@@ -1,35 +1,207 @@
-
 #!/usr/bin/env python3
 import html
 import json
 import math
 import os
 import re
+import datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlencode, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-# 환경 변수 로드 (Vercel 대시보드에서 등록 가능)
+# 환경 변수 로드 (Vercel 대시보드에서 등록 필요)
 EVLINE_USER_ID = os.environ.get("EVLINE_USER_ID", "")
 EVLINE_USER_PWD = os.environ.get("EVLINE_USER_PWD", "")
 BASE_URL = "https://www.ev-line.co.kr"
-STATION_API = "/charge/new_mapdataadd_202008.asp"
 
-# 앞서 작성하신 아름다운 다크모드 HTML UI 템플릿 (PAGE 생략 - 기존 소스 그대로 사용 가능)
-PAGE = """...""" # (이전 코드의 HTML PAGE 템플릿을 그대로 복사해서 넣어주세요)
+# Vercel 환경 빌드 안정성을 위해 CSS 중괄호와 충돌하지 않는 고유 토큰 사용
+PAGE = """<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="60">
+  <title>EV-Line</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050706;
+      --fg: #f7fff9;
+      --muted: #a9b5ad;
+      --line: #2a342e;
+      --panel: #101511;
+      --panel-2: #182019;
+      --ok: #00e676;
+      --ok-bg: #002914;
+      --ok-line: #00592c;
+      --warn: #ffd600;
+      --warn-bg: #2b2400;
+      --warn-line: #594b00;
+      --bad: #ff1744;
+      --bad-bg: #2b030b;
+      --bad-line: #590a1a;
+      --fav: #ffca28;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 16px;
+      line-height: 1.4;
+    }
+    main { max-width: 600px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+    h1 { font-size: 24px; font-weight: 850; letter-spacing: -0.5px; }
+    .station { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .meta { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; line-height: 1.6; }
+    .actions { display: flex; gap: 8px; margin-bottom: 16px; }
+    .actions a, .actions button {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+    }
+    .actions a:hover, .actions button:hover { background: var(--panel-2); border-color: var(--muted); }
+    .dashboard { display: flex; flex-direction: column; gap: 12px; }
+    .status-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .status-card.ok { background: var(--ok-bg); border-color: var(--ok-line); }
+    .status-card.warn { background: var(--warn-bg); border-color: var(--warn-line); }
+    .status-card.bad { background: var(--bad-bg); border-color: var(--bad-line); }
+    .group {
+      color: var(--muted);
+      font-size: 24px;
+      font-weight: 820;
+      letter-spacing: 0;
+    }
+    .status-card.ok .group { color: #81c784; }
+    .status-card.warn .group { color: #fff176; }
+    .status-card.bad .group { color: #e57373; }
+    .state {
+      color: var(--fg);
+      font-size: 36px;
+      font-weight: 880;
+      letter-spacing: 0;
+    }
+    .favorite {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--line);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    .status-card.is-favorite .favorite { color: var(--fav); }
+    @media (max-width: 520px) {
+      body { padding: 12px; }
+      .group { font-size: 20px; }
+      .state { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>EV-Line</h1>
+        __STATION__
+      </div>
+      <div class="meta">
+        <div>__UPDATED__</div>
+      </div>
+    </header>
+    <div class="actions">
+      <a href="/">새로고침</a>
+      <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
+      <button type="button" id="toggle-view">전체보기</button>
+    </div>
+    __BODY__
+  </main>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleView = document.getElementById("toggle-view");
+      const cards = document.querySelectorAll(".status-card");
+      const favKey = "evline_favs_v2";
+      let favorites = JSON.parse(localStorage.getItem(favKey) || "[]");
+      let showAll = localStorage.getItem("evline_show_all") !== "0";
+
+      function saveFavs() { localStorage.setItem(favKey, json.stringify(favorites)); }
+      function updateToggleText() { toggleView.textContent = showAll ? "즐겨찾기만" : "전체보기"; }
+
+      function applyFilter() {
+        cards.forEach(card => {
+          const g = card.getAttribute("data-group");
+          const isFav = favorites.includes(g);
+          if (isFav) card.classList.add("is-favorite");
+          else card.classList.remove("is-favorite");
+          card.style.display = (showAll || isFav) ? "flex" : "none";
+        });
+      }
+
+      cards.forEach(card => {
+        const btn = card.querySelector(".favorite");
+        const g = card.getAttribute("data-group");
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (favorites.includes(g)) favorites = favorites.filter(x => x !== g);
+          else favorites.push(g);
+          saveFavs();
+          applyFilter();
+        });
+      });
+
+      toggleView.addEventListener("click", () => {
+        showAll = !showAll;
+        localStorage.setItem("evline_show_all", showAll ? "1" : "0");
+        updateToggleText();
+        applyFilter();
+      });
+
+      updateToggleText();
+      applyFilter();
+    });
+  </script>
+</body>
+</html>
+"""
 
 def get_authenticated_session():
     """
-    Vercel은 파일 쓰기가 제한되므로, 파일(.cookies.txt) 대신 
-    메모리 상에서 requests.Session 객체를 생성하여 세션을 유지합니다.
+    Vercel의 읽기 전용 제약을 우회하기 위해 Memory 상에서 requests.Session 객체로 세션을 관리합니다.
     """
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari/537.36"
     })
     
-    # 로그인 요청
     login_url = f"{BASE_URL}/login/login_ok.asp"
     payload = {
         "user_id": EVLINE_USER_ID,
@@ -46,8 +218,7 @@ def get_authenticated_session():
 
 def fetch_and_parse_detail(session, detail_id):
     """
-    기존 쉘 스크립트와 Perl 정규식 파싱을 대체하는 순수 파이썬 로직입니다.
-    EUC-KR 디코딩 후 BeautifulSoup으로 데이터를 정제합니다.
+    기존 bash curl + iconv + perl 매칭을 완벽히 대체하는 동적 순수 파이썬 데이터 수집 핸들러입니다.
     """
     url = f"{BASE_URL}/charge/mapdatadetail_202008.asp?id={detail_id}"
     headers = {
@@ -59,12 +230,11 @@ def fetch_and_parse_detail(session, detail_id):
     
     try:
         res = session.get(url, headers=headers, timeout=10)
-        # EUC-KR 수동 지정 디코딩
         raw_html = res.content.decode('euc-kr', errors='ignore')
     except Exception as e:
         return f"데이터 패치 실패: {str(e)}"
 
-    # JSON 래핑 언패킹 ([{"id":"..."}])
+    # JSON 데이터 래핑 제거
     marker = '[{"id":"'
     if raw_html.startswith(marker) and raw_html.endswith('"}]'):
         raw_html = raw_html[len(marker):-3]
@@ -91,7 +261,6 @@ def parse_group_states(raw_html):
         tds = tr.find_all('td')
         if len(tds) == 2:
             group_text = tds[0].get_text(strip=True)
-            # 알파벳 1글자 그룹명 필터링 (A, B, C...)
             if len(group_text) == 1 and group_text.isalpha():
                 state_text = tds[1].get_text(strip=True).replace('&nbsp;', ' ')
                 rows[group_text.upper()] = state_text
@@ -112,9 +281,6 @@ def render_dashboard(raw_html):
     return '<div class="dashboard">' + "".join(cards) + "</div>"
 
 class handler(BaseHTTPRequestHandler):
-    """
-    Vercel 서버리스 환경은 이 'handler' 클래스를 인스턴스화하여 인바운드 요청을 처리합니다.
-    """
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path not in ("/", "/healthz"):
@@ -131,22 +297,22 @@ class handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         detail_id = query.get("id", ["001513355667"])[0].strip()
 
-        # 매 요청마다 메모리 세션을 열어 인증을 수행
         session = get_authenticated_session()
         raw_html = fetch_and_parse_detail(session, detail_id)
 
         station = parse_station_name(raw_html)
         formatted_body = render_dashboard(raw_html)
 
-        # 시간대 가져오기 (Vercel서버 시간 기준 단순 출력 대신 가독성 포맷팅)
-        import datetime
+        # KST(UTC+9) 시간 반영 보정
         updated = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
 
-        data = PAGE.format(
-            updated=html.escape(updated),
-            station=f'<div class="station">{html.escape(station)}</div>' if station else "",
-            body=formatted_body,
-        ).encode("utf-8")
+        # 명시적 문자열 치환 기법을 통해 CSS 구문 훼손 방지
+        response_html = PAGE
+        response_html = response_html.replace("__UPDATED__", html.escape(updated))
+        response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station)}</div>' if station else "")
+        response_html = response_html.replace("__BODY__", formatted_body)
+
+        data = response_html.encode("utf-8")
 
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
