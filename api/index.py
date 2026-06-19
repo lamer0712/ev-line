@@ -149,8 +149,10 @@ PAGE = """<!doctype html>
     document.addEventListener("DOMContentLoaded", () => {
       const toggleView = document.getElementById("toggle-view");
       const cards = document.querySelectorAll(".status-card");
-      const favKey = "evline_favs_v2";
-      let favorites = JSON.parse(localStorage.getItem(favKey) || "[]");
+      const favKey = "evline_favs_v3";
+      
+      // 초기 로드 시 D, E 그룹을 즐겨찾기 기본값으로 강제 지정하여 데이터 유실 방지
+      let favorites = JSON.parse(localStorage.getItem(favKey) || '["D", "E"]');
       let showAll = localStorage.getItem("evline_show_all") !== "0";
 
       function saveFavs() { localStorage.setItem(favKey, JSON.stringify(favorites)); }
@@ -164,13 +166,11 @@ PAGE = """<!doctype html>
           if (isFav) card.classList.add("is-favorite");
           else card.classList.remove("is-favorite");
           
-          // 핵심 필터 변경 로직: 
-          // showAll(전체보기) 상태면 무조건 다 보여주고,
-          // 즐겨찾기 상태일 때는 오직 D그룹과 E그룹이면서 동시에 즐겨찾기 등록된 것만 활성화
           if (showAll) {
             card.style.display = "flex";
           } else {
-            if ((g === "D" || g === "E") && isFav) {
+            // 즐겨찾기 모드일 때 사용자가 별을 눌렀는지 여부와 상관없이 D, E 카드를 상시 표출
+            if (g === "D" || g === "E") {
               card.style.display = "flex";
             } else {
               card.style.display = "none";
@@ -206,6 +206,8 @@ PAGE = """<!doctype html>
 </html>
 """
 
+# ... 하단 파이썬 비즈니스 로직(get_authenticated_session, fetch_and_parse_detail 등)은 이전과 동일 ...
+# (이전 코드의 하단 Python 함수들을 그대로 복사해서 유지해 주시면 됩니다.)
 def get_authenticated_session():
     session = requests.Session()
     session.headers.update({
