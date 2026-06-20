@@ -15,7 +15,6 @@ EVLINE_USER_ID = os.environ.get("EVLINE_USER_ID", "")
 EVLINE_USER_PWD = os.environ.get("EVLINE_USER_PWD", "")
 BASE_URL = "https://www.ev-line.co.kr"
 
-# Vercel 환경 빌드 안정성을 위해 CSS 중괄호와 충돌하지 않는 고유 토큰 사용
 PAGE = """<!doctype html>
 <html lang="ko">
 <head>
@@ -139,7 +138,7 @@ PAGE = """<!doctype html>
       </div>
     </header>
     <div class="actions">
-      <a href="/">새로고침</a>
+      <a href="#" id="refresh-link">새로고침</a>
       <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
       <button type="button" id="toggle-view">전체보기</button>
     </div>
@@ -148,12 +147,22 @@ PAGE = """<!doctype html>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const toggleView = document.getElementById("toggle-view");
+      const refreshLink = document.getElementById("refresh-link");
       const cards = document.querySelectorAll(".status-card");
-      const favKey = "evline_favs_v3";
       
-      // 초기 로드 시 D, E 그룹을 즐겨찾기 기본값으로 강제 지정하여 데이터 유실 방지
-      let favorites = JSON.parse(localStorage.getItem(favKey) || '["D", "E"]');
-      let showAll = localStorage.getItem("evline_show_all") !== "0";
+      // 1. 현재 URL에서 id 값을 추출 (없으면 기본값 지정)
+      const urlParams = new URLSearchParams(window.location.search);
+      const stationId = urlParams.get("id") || "001513355667";
+      
+      // 새로고침 링크 동적 유지
+      refreshLink.href = window.location.pathname + window.location.search;
+
+      // 2. 스토리지 키 이름을 충전소 id 단위로 격리 분리 ('evline_favs_001513355667' 형태)
+      const favKey = `evline_favs_id_${stationId}`;
+      const showAllKey = `evline_show_all_id_${stationId}`;
+
+      let favorites = JSON.parse(localStorage.getItem(favKey) || '[]');
+      let showAll = localStorage.getItem(showAllKey) !== "0";
 
       function saveFavs() { localStorage.setItem(favKey, JSON.stringify(favorites)); }
       function updateToggleText() { toggleView.textContent = showAll ? "즐겨찾기만" : "전체보기"; }
@@ -169,7 +178,7 @@ PAGE = """<!doctype html>
           if (showAll) {
             card.style.display = "flex";
           } else {
-            // 즐겨찾기 모드일 때 사용자가 별을 눌렀는지 여부와 상관없이 D, E 카드를 상시 표출
+            // 현재 충전소 id 기반의 즐겨찾기 목록에 포함된 그룹만 표시
             if (isFav) {
               card.style.display = "flex";
             } else {
@@ -193,7 +202,7 @@ PAGE = """<!doctype html>
 
       toggleView.addEventListener("click", () => {
         showAll = !showAll;
-        localStorage.setItem("evline_show_all", showAll ? "1" : "0");
+        localStorage.setItem(showAllKey, showAll ? "1" : "0");
         updateToggleText();
         applyFilter();
       });
@@ -206,14 +215,11 @@ PAGE = """<!doctype html>
 </html>
 """
 
-# ... 하단 파이썬 비즈니스 로직(get_authenticated_session, fetch_and_parse_detail 등)은 이전과 동일 ...
-# (이전 코드의 하단 Python 함수들을 그대로 복사해서 유지해 주시면 됩니다.)
 def get_authenticated_session():
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari/537.36"
     })
-    
     login_url = f"{BASE_URL}/login/login_ok.asp"
     payload = {
         "user_id": EVLINE_USER_ID,
@@ -221,7 +227,6 @@ def get_authenticated_session():
         "url": "/login/login.asp"
     }
     headers = {"Referer": f"{BASE_URL}/login/login.asp"}
-    
     try:
         session.post(login_url, data=payload, headers=headers, timeout=10)
     except Exception:
@@ -236,7 +241,6 @@ def fetch_and_parse_detail(session, detail_id):
         "Referer": f"{BASE_URL}/charge/serch.asp",
         "X-Requested-With": "XMLHttpRequest"
     }
-    
     try:
         res = session.get(url, headers=headers, timeout=10)
         raw_html = res.content.decode('euc-kr', errors='ignore')
@@ -247,11 +251,9 @@ def fetch_and_parse_detail(session, detail_id):
     if raw_html.startswith(marker) and raw_html.endswith('"}]'):
         raw_html = raw_html[len(marker):-3]
     raw_html = raw_html.replace('\\"', '"').replace('\\/', '/')
-
     if "alert('" in raw_html:
         alert_msg = re.search(r"alert\('([^']+)'\)", raw_html)
         return f"알림: {alert_msg.group(1)}" if alert_msg else "알림 발생"
-
     return raw_html
 
 def parse_station_name(raw_html):
@@ -294,7 +296,6 @@ class handler(BaseHTTPRequestHandler):
         if parsed.path not in ("/", "/healthz"):
             self.send_error(404)
             return
-
         if parsed.path == "/healthz":
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
