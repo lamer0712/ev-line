@@ -170,7 +170,7 @@ PAGE = """<!doctype html>
             card.style.display = "flex";
           } else {
             // 즐겨찾기 모드일 때 사용자가 별을 눌렀는지 여부와 상관없이 D, E 카드를 상시 표출
-            if (g === "D" || g === "E" || isFav) {
+            if (isFav) {
               card.style.display = "flex";
             } else {
               card.style.display = "none";
