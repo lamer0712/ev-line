@@ -1,6 +1,6 @@
 # EV-Line
 
-EV-Line 충전소의 그룹별 상태를 보여주는 Vercel 웹 앱입니다. 로컬 서버 실행 방식은 지원하지 않으며, `api/index.py`가 Vercel Python Function으로 동작합니다.
+EV-Line 충전소의 그룹별 상태를 보여주는 Vercel 웹 앱입니다. `api/index.py`가 Vercel Python Function으로 동작합니다.
 
 ## Vercel 배포
 
