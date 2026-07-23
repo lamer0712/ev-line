@@ -87,7 +87,13 @@ PAGE = """<!doctype html>
     h1 { font-size: 24px; font-weight: 850; letter-spacing: -0.5px; }
     .station { font-size: 14px; color: var(--muted); margin-top: 2px; }
     .meta { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; line-height: 1.6; }
-    .actions { display: flex; gap: 8px; margin-bottom: 16px; }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
     .actions a, .actions button {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -379,16 +385,16 @@ PAGE = """<!doctype html>
       <div>
         <h1>EV-Line</h1>
         __STATION__
+        <div class="actions">
+          <a href="#" id="refresh-link">새로고침</a>
+          <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
+          <button type="button" id="toggle-view">전체보기</button>
+        </div>
       </div>
       <div class="meta">
         <div>__UPDATED__</div>
       </div>
     </header>
-    <div class="actions">
-      <a href="#" id="refresh-link">새로고침</a>
-      <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
-      <button type="button" id="toggle-view">전체보기</button>
-    </div>
     __FEE_ESTIMATE__
     __BODY__
   </main>
