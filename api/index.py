@@ -141,95 +141,35 @@ PAGE = """<!doctype html>
       flex-wrap: wrap;
     }
     .fee-summary {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
       margin-bottom: 14px;
-      padding: 0 0 12px;
-      border: 0;
-      border-bottom: 1px solid var(--ok-line);
-      border-radius: 0;
-      background: transparent;
+      color: #d9fbe4;
+      font-size: 13px;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+      word-break: keep-all;
     }
-    .fee-summary-head {
+    .fee-summary-line {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-      flex: 1 1 220px;
-    }
-    .fee-summary-head-line {
-      display: flex;
+      flex-wrap: nowrap;
+      gap: 0 10px;
       align-items: baseline;
-      gap: 8px;
-      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
     }
-    .fee-summary-title {
-      font-size: 14px;
+    .fee-summary-item {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    .fee-summary-label {
+      color: #92c7a9;
+      margin-right: 0;
+    }
+    .fee-summary-value {
+      color: #f7fff9;
       font-weight: 800;
-      letter-spacing: -0.02em;
-      color: #b9ffd8;
-    }
-    .fee-summary-subtitle {
-      color: #92c7a9;
-      font-size: 11px;
-      font-variant-numeric: tabular-nums;
-    }
-    .fee-summary-bar {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      min-width: 0;
-      flex: 2 1 300px;
-    }
-    .fee-metric-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(185, 255, 216, 0.12);
-      border-radius: 10px;
-      padding: 10px 11px;
-      min-width: 0;
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .fee-metric-card.compact {
-      padding: 8px 10px;
-    }
-    .fee-metric-label {
-      color: #92c7a9;
-      font-size: 10px;
-      letter-spacing: 0.02em;
-      line-height: 1.2;
-      flex: 1 1 auto;
-    }
-    .fee-metric-value {
-      font-size: 18px;
-      font-weight: 850;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-      text-align: right;
-    }
-    .fee-metric-card.compact .fee-metric-label {
-      font-size: 9px;
-    }
-    .fee-metric-card.compact .fee-metric-value {
-      font-size: 16px;
-    }
-    .fee-metric-card.compact .fee-metric-unit {
-      font-size: 10px;
-    }
-    .fee-metric-unit {
-      color: #92c7a9;
-      font-size: 11px;
-      line-height: 1.2;
-      margin-left: 4px;
-      white-space: nowrap;
     }
     .top-divider {
       border-top: 1px solid var(--line);
@@ -281,7 +221,6 @@ PAGE = """<!doctype html>
       body { padding: 12px; }
       .group { font-size: 18px; }
       .state { font-size: 24px; }
-      .fee-summary-bar { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -653,47 +592,25 @@ def render_fee_estimate(estimate):
     if not estimate:
         return (
             '<section class="fee-summary">'
-            '<div class="fee-summary-head">'
-            '<div class="fee-summary-head-line">'
-            '<div class="fee-summary-title">이동형 충전기 예상 요금</div>'
-            '<div class="fee-summary-subtitle">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</div>'
-            '</div>'
+            '<div class="fee-summary-line">'
+            '<span class="fee-summary-item">'
+            '<span class="fee-summary-label">이동형 충전기 예상 요금</span>'
+            '<span class="fee-summary-value">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</span>'
+            '</span>'
             '</div>'
             '</section>'
         )
     usage_total = f'{estimate["usage_total"]:.2f}'
-    reference_month = html.escape(estimate["reference_month"])
     effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
+    extra_usage_250 = estimate.get("extra_usage_250")
+    extra_usage_text = f'{extra_usage_250:.2f}' if extra_usage_250 is not None else '-'
     parts = [
         '<section class="fee-summary">',
-        '<div class="fee-summary-head">',
-        '<div class="fee-summary-head-line">',
-        '<div class="fee-summary-title">이동형 충전기 예상 요금</div>',
-        f'<div class="fee-summary-subtitle">{reference_month}</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-summary-bar">',
-        '<div class="fee-metric-card compact">',
-        '<div class="fee-metric-label">총 충전량</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{usage_total}</div>',
-        '<div class="fee-metric-unit">kWh</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-metric-card compact">',
-        '<div class="fee-metric-label">예상 총액</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{estimate["total"]:,}</div>',
-        '<div class="fee-metric-unit">원</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-metric-card compact">',
-        '<div class="fee-metric-label">환산단가</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{effective_rate:.1f}</div>',
-        '<div class="fee-metric-unit">원/kWh</div>',
-        '</div>',
-        '</div>',
+        '<div class="fee-summary-line">',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">충전량 :</span><span class="fee-summary-value">{usage_total} kWh</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">예상금액 :</span><span class="fee-summary-value">{estimate["total"]:,} 원</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">환산단가 :</span><span class="fee-summary-value">{effective_rate:.1f} 원/kWh</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">추가 충전 :</span><span class="fee-summary-value">{extra_usage_text} kWh</span></span>',
         '</div>',
         '</section>',
     ]
