@@ -220,9 +220,9 @@ PAGE = """<!doctype html>
     }
     .fee-summary-head {
       display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: flex-start;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
     }
     .fee-summary-head-line {
       width: 100%;
@@ -247,6 +247,7 @@ PAGE = """<!doctype html>
       font-size: 11px;
       text-align: right;
       font-variant-numeric: tabular-nums;
+      align-self: flex-end;
     }
     .fee-summary-total {
       display: flex;
@@ -758,6 +759,7 @@ def render_fee_estimate(estimate):
         '<div class="fee-summary-head-line">',
         '<div class="fee-summary-title">이동형 충전기 예상 요금</div>',
         f'<div class="fee-summary-subtitle">{reference_month}</div>',
+        '</div>',
         '</div>',
         '<div class="fee-summary-grid">',
         '<div class="fee-metric-card">',
