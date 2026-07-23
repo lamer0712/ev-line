@@ -18,7 +18,6 @@ DEFAULT_DETAIL_ID = "001513355667"
 STATIONS = [
     {"id": "001513355667", "name": "동탄시범계룡리슈빌아파트"},
     {"id": "001544793284", "name": "네이버주식회사"},
-    {"id": "184760000001", "name": "동탄역시범호반써밋아파트"},
 ]
 STATION_NAME_BY_ID = {station["id"]: station["name"] for station in STATIONS}
 MONTHLY_USAGE_LABELS = ("경부하", "중부하", "최대부하")
@@ -78,8 +77,8 @@ PAGE = """<!doctype html>
     main { max-width: 600px; margin: 0 auto; }
     header {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
       margin-bottom: 24px;
       border-bottom: 1px solid var(--line);
       padding-bottom: 16px;
@@ -90,9 +89,8 @@ PAGE = """<!doctype html>
     .actions {
       display: flex;
       gap: 8px;
-      margin-top: 10px;
-      margin-bottom: 16px;
       flex-wrap: wrap;
+      justify-content: flex-end;
     }
     .actions a, .actions button {
       background: var(--panel);
@@ -108,21 +106,19 @@ PAGE = """<!doctype html>
       align-items: center;
     }
     .actions a:hover, .actions button:hover { background: var(--panel-2); border-color: var(--muted); }
-    .station-switcher {
+    .header-top {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 20px;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
-    .station-switcher-label {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-right: 2px;
-    }
-    .station-switcher a {
+    .station-toggle {
       display: inline-flex;
       align-items: center;
       padding: 7px 11px;
@@ -134,108 +130,41 @@ PAGE = """<!doctype html>
       font-size: 13px;
       line-height: 1;
       white-space: nowrap;
+      cursor: pointer;
     }
-    .station-switcher a:hover { background: var(--panel-2); border-color: var(--muted); }
-    .station-switcher a.is-current {
-      background: var(--ok-bg);
-      border-color: var(--ok-line);
-      color: #b9ffd8;
-      font-weight: 700;
-    }
-    .monthly-summary {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(16, 21, 17, 0.98), rgba(9, 12, 10, 0.98));
-    }
-    .monthly-summary-head {
+    .station-toggle:hover { background: var(--panel-2); border-color: var(--muted); }
+    .header-row {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
-      align-items: flex-start;
-    }
-    .monthly-summary-title {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-    .monthly-summary-subtitle {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 3px;
-    }
-    .monthly-summary-note {
-      color: var(--muted);
-      font-size: 11px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    .monthly-summary-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .monthly-usage-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 11px;
-      min-width: 0;
-    }
-    .monthly-usage-label {
-      color: var(--muted);
-      font-size: 11px;
-      margin-bottom: 6px;
-      letter-spacing: 0.02em;
-    }
-    .monthly-usage-value {
-      font-size: 20px;
-      font-weight: 850;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-    .monthly-usage-unit {
-      margin-left: 4px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .monthly-summary.empty {
-      border-color: var(--warn-line);
-      background: var(--warn-bg);
-    }
-    .monthly-summary.empty .monthly-summary-title,
-    .monthly-summary.empty .monthly-summary-subtitle {
-      color: #fff3b0;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     .fee-summary {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
       margin-bottom: 16px;
-      padding: 14px;
+      padding: 11px 13px;
       border: 1px solid var(--ok-line);
-      border-radius: 12px;
+      border-radius: 999px;
       background: linear-gradient(180deg, rgba(0, 41, 20, 0.96), rgba(6, 15, 10, 0.98));
     }
     .fee-summary-head {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      align-items: stretch;
+      gap: 2px;
+      min-width: 0;
+      flex: 1 1 220px;
     }
     .fee-summary-head-line {
-      width: 100%;
       display: flex;
       align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
+      min-width: 0;
     }
     .fee-summary-title {
       font-size: 15px;
@@ -246,49 +175,14 @@ PAGE = """<!doctype html>
     .fee-summary-subtitle {
       color: #92c7a9;
       font-size: 12px;
-      margin-top: 3px;
-    }
-    .fee-summary-note {
-      color: #92c7a9;
-      font-size: 11px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      align-self: flex-end;
-    }
-    .fee-summary-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: baseline;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(185, 255, 216, 0.16);
-    }
-    .fee-summary-total-label {
-      font-size: 11px;
-      color: #b9ffd8;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-    .fee-summary-total-value {
-      font-size: 26px;
-      font-weight: 900;
-      letter-spacing: -0.03em;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-    .fee-summary-rate {
-      color: #92c7a9;
-      font-size: 11px;
-      margin-top: 4px;
-      text-align: right;
       font-variant-numeric: tabular-nums;
     }
-    .fee-summary-grid {
+    .fee-summary-bar {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
+      min-width: 0;
+      flex: 2 1 300px;
     }
     .fee-metric-card {
       background: rgba(255, 255, 255, 0.03);
@@ -300,6 +194,9 @@ PAGE = """<!doctype html>
       align-items: baseline;
       justify-content: space-between;
       gap: 10px;
+    }
+    .fee-metric-card.compact {
+      padding: 8px 10px;
     }
     .fee-metric-label {
       color: #92c7a9;
@@ -316,6 +213,15 @@ PAGE = """<!doctype html>
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
       text-align: right;
+    }
+    .fee-metric-card.compact .fee-metric-label {
+      font-size: 9px;
+    }
+    .fee-metric-card.compact .fee-metric-value {
+      font-size: 16px;
+    }
+    .fee-metric-card.compact .fee-metric-unit {
+      font-size: 10px;
     }
     .fee-metric-unit {
       color: #92c7a9;
@@ -374,25 +280,26 @@ PAGE = """<!doctype html>
       body { padding: 12px; }
       .group { font-size: 18px; }
       .state { font-size: 24px; }
+      .fee-summary-bar { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <main>
-    __STATION_SWITCHER__
     <div class="top-divider" aria-hidden="true"></div>
     <header>
-      <div>
+      <div class="header-top">
         <h1>EV-Line</h1>
+        <div class="meta">
+          <div>__UPDATED__</div>
+        </div>
+      </div>
+      <div class="header-row">
         __STATION__
         <div class="actions">
           <a href="#" id="refresh-link">새로고침</a>
-          <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
           <button type="button" id="toggle-view">전체보기</button>
         </div>
-      </div>
-      <div class="meta">
-        <div>__UPDATED__</div>
       </div>
     </header>
     __FEE_ESTIMATE__
@@ -750,15 +657,12 @@ def render_fee_estimate(estimate):
             '<div class="fee-summary-title">이동형 충전기 예상 요금</div>'
             '<div class="fee-summary-subtitle">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</div>'
             '</div>'
-            '<div class="fee-summary-note">여름철 단가표 기준</div>'
             '</div>'
             '</section>'
         )
     usage_total = f'{estimate["usage_total"]:.2f}'
     reference_month = html.escape(estimate["reference_month"])
     effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
-    extra_usage_250 = estimate.get("extra_usage_250")
-    extra_usage_text = f'{extra_usage_250:.2f}' if effective_rate > 250 and extra_usage_250 is not None else ''
     parts = [
         '<section class="fee-summary">',
         '<div class="fee-summary-head">',
@@ -767,29 +671,22 @@ def render_fee_estimate(estimate):
         f'<div class="fee-summary-subtitle">{reference_month}</div>',
         '</div>',
         '</div>',
-        '<div class="fee-summary-grid">',
-        '<div class="fee-metric-card">',
+        '<div class="fee-summary-bar">',
+        '<div class="fee-metric-card compact">',
         '<div class="fee-metric-label">총 충전량</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
         f'<div class="fee-metric-value">{usage_total}</div>',
         '<div class="fee-metric-unit">kWh</div>',
         '</div>',
         '</div>',
-        '<div class="fee-metric-card">',
+        '<div class="fee-metric-card compact">',
         '<div class="fee-metric-label">예상 총액</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
         f'<div class="fee-metric-value">{estimate["total"]:,}</div>',
         '<div class="fee-metric-unit">원</div>',
         '</div>',
         '</div>',
-        '<div class="fee-metric-card">',
-        '<div class="fee-metric-label">추가 충전량</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{extra_usage_text}</div>',
-        '<div class="fee-metric-unit">kWh</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-metric-card">',
+        '<div class="fee-metric-card compact">',
         '<div class="fee-metric-label">환산단가</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
         f'<div class="fee-metric-value">{effective_rate:.1f}</div>',
@@ -843,24 +740,21 @@ def render_monthly_usage(monthly_usage):
         '</section>'
     )
 
-def render_station_switcher(current_id):
-    items = []
+def render_station_toggle(current_id, current_label=""):
+    current_name = current_label or STATION_NAME_BY_ID.get(current_id, STATIONS[0]["name"])
+    next_station = None
     for station in STATIONS:
-        station_id = station["id"]
-        name = html.escape(station["name"])
-        is_current = station_id == current_id
-        current_attr = ' aria-current="page"' if is_current else ""
-        class_attr = "is-current" if is_current else ""
-        items.append(
-            f'<a class="{class_attr}" '
-            f'href="?id={html.escape(station_id)}"{current_attr}>'
-            f'{name}</a>'
-        )
+        if station["id"] != current_id:
+            next_station = station
+            break
+    if next_station is None:
+        next_station = STATIONS[0]
+    href = f"?id={html.escape(next_station['id'])}"
+    label = html.escape(current_name)
     return (
-        '<nav class="station-switcher" aria-label="충전소 전환">'
-        '<span class="station-switcher-label">충전소</span>'
-        + "".join(items)
-        + "</nav>"
+        f'<a class="station-toggle" href="{href}" aria-label="충전소 전환">'
+        f'{label}'
+        '</a>'
     )
 
 class handler(BaseHTTPRequestHandler):
@@ -897,8 +791,7 @@ class handler(BaseHTTPRequestHandler):
         response_html = PAGE
         response_html = response_html.replace("__UPDATED__", html.escape(updated))
         response_html = response_html.replace("__DEFAULT_ID__", DEFAULT_DETAIL_ID)
-        response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station_label)}</div>' if station_label else "")
-        response_html = response_html.replace("__STATION_SWITCHER__", render_station_switcher(detail_id))
+        response_html = response_html.replace("__STATION__", render_station_toggle(detail_id, station_label))
         response_html = response_html.replace("__FEE_ESTIMATE__", formatted_fee_estimate)
         response_html = response_html.replace("__BODY__", formatted_body)
 
