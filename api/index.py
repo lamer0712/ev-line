@@ -148,14 +148,24 @@ PAGE = """<!doctype html>
       font-variant-numeric: tabular-nums;
       word-break: keep-all;
     }
+    .fee-summary-viewport {
+      overflow: hidden;
+      white-space: nowrap;
+    }
     .fee-summary-line {
       display: flex;
       flex-wrap: nowrap;
       gap: 0 10px;
       align-items: baseline;
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
+      width: max-content;
+      will-change: transform;
+    }
+    .fee-summary-line.is-scrolling {
+      animation: fee-summary-scroll var(--fee-summary-scroll-duration, 18s) linear infinite;
+    }
+    @keyframes fee-summary-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
     }
     .fee-summary-item {
       display: inline-flex;
@@ -250,6 +260,7 @@ PAGE = """<!doctype html>
       const toggleView = document.getElementById("toggle-view");
       const refreshLink = document.getElementById("refresh-link");
       const cards = document.querySelectorAll(".status-card");
+      const feeSummaryLine = document.querySelector('[data-fee-summary-line="1"]');
       
       // 1. 현재 URL에서 id 값을 추출 (없으면 기본값 지정)
       const urlParams = new URLSearchParams(window.location.search);
@@ -257,6 +268,25 @@ PAGE = """<!doctype html>
       
       // 새로고침 링크 동적 유지
       refreshLink.href = window.location.pathname + window.location.search;
+
+      function updateFeeSummaryMarquee() {
+        if (!feeSummaryLine) return;
+        const viewport = feeSummaryLine.parentElement;
+        if (!viewport) return;
+        const base = feeSummaryLine.dataset.baseHtml || feeSummaryLine.innerHTML;
+        feeSummaryLine.dataset.baseHtml = base;
+        feeSummaryLine.classList.remove("is-scrolling");
+        feeSummaryLine.innerHTML = base;
+        feeSummaryLine.style.removeProperty("--fee-summary-scroll-duration");
+
+        if (feeSummaryLine.scrollWidth <= viewport.clientWidth) return;
+
+        feeSummaryLine.innerHTML = base + base;
+        const overflow = feeSummaryLine.scrollWidth - viewport.clientWidth;
+        const duration = Math.max(14, overflow / 35);
+        feeSummaryLine.style.setProperty("--fee-summary-scroll-duration", `${duration}s`);
+        feeSummaryLine.classList.add("is-scrolling");
+      }
 
       // 2. 스토리지 키 이름을 충전소 id 단위로 격리 분리 ('evline_favs_001513355667' 형태)
       const favKey = `evline_favs_id_${stationId}`;
@@ -310,6 +340,8 @@ PAGE = """<!doctype html>
 
       updateToggleText();
       applyFilter();
+      updateFeeSummaryMarquee();
+      window.addEventListener("resize", updateFeeSummaryMarquee);
     });
   </script>
 </body>
@@ -604,11 +636,13 @@ def render_fee_estimate(estimate):
     if not estimate:
         return (
             '<section class="fee-summary">'
-            '<div class="fee-summary-line">'
+            '<div class="fee-summary-viewport">'
+            '<div class="fee-summary-line" data-fee-summary-line="1">'
             '<span class="fee-summary-item">'
             '<span class="fee-summary-label">충전량</span>'
             '<span class="fee-summary-value">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</span>'
             '</span>'
+            '</div>'
             '</div>'
             '</section>'
         )
@@ -618,11 +652,13 @@ def render_fee_estimate(estimate):
     extra_usage_text = f'{extra_usage:.2f}' if extra_usage is not None else '-'
     parts = [
         '<section class="fee-summary">',
-        '<div class="fee-summary-line">',
+        '<div class="fee-summary-viewport">',
+        '<div class="fee-summary-line" data-fee-summary-line="1">',
         f'<span class="fee-summary-item"><span class="fee-summary-label">총충전량</span><span class="fee-summary-value">: {usage_total} kWh</span></span>',
         f'<span class="fee-summary-item"><span class="fee-summary-label">예상금액</span><span class="fee-summary-value">: {estimate["total"]:,} 원</span></span>',
         f'<span class="fee-summary-item"><span class="fee-summary-label">환산단가</span><span class="fee-summary-value">: {effective_rate:.1f} 원/kWh</span></span>',
         f'<span class="fee-summary-item"><span class="fee-summary-label">추가충전</span><span class="fee-summary-value">: {extra_usage_text} kWh</span></span>',
+        '</div>',
         '</div>',
         '</section>',
     ]
