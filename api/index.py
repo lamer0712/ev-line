@@ -147,11 +147,12 @@ PAGE = """<!doctype html>
       justify-content: space-between;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 16px;
-      padding: 11px 13px;
-      border: 1px solid var(--ok-line);
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(0, 41, 20, 0.96), rgba(6, 15, 10, 0.98));
+      margin-bottom: 14px;
+      padding: 0 0 12px;
+      border: 0;
+      border-bottom: 1px solid var(--ok-line);
+      border-radius: 0;
+      background: transparent;
     }
     .fee-summary-head {
       display: flex;
@@ -167,14 +168,14 @@ PAGE = """<!doctype html>
       min-width: 0;
     }
     .fee-summary-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: #b9ffd8;
     }
     .fee-summary-subtitle {
       color: #92c7a9;
-      font-size: 12px;
+      font-size: 11px;
       font-variant-numeric: tabular-nums;
     }
     .fee-summary-bar {
