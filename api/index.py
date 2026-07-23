@@ -14,6 +14,13 @@ from bs4 import BeautifulSoup
 EVLINE_USER_ID = os.environ.get("EVLINE_USER_ID", "")
 EVLINE_USER_PWD = os.environ.get("EVLINE_USER_PWD", "")
 BASE_URL = "https://www.ev-line.co.kr"
+DEFAULT_DETAIL_ID = "001513355667"
+STATIONS = [
+    {"id": "001513355667", "name": "동탄시범계룡리슈빌아파트"},
+    {"id": "001544793284", "name": "네이버주식회사"},
+    {"id": "184760000001", "name": "동탄역시범호반써밋아파트"},
+]
+STATION_NAME_BY_ID = {station["id"]: station["name"] for station in STATIONS}
 
 PAGE = """<!doctype html>
 <html lang="ko">
@@ -77,6 +84,40 @@ PAGE = """<!doctype html>
       align-items: center;
     }
     .actions a:hover, .actions button:hover { background: var(--panel-2); border-color: var(--muted); }
+    .station-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .station-switcher-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-right: 2px;
+    }
+    .station-switcher a {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--fg);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .station-switcher a:hover { background: var(--panel-2); border-color: var(--muted); }
+    .station-switcher a.is-current {
+      background: var(--ok-bg);
+      border-color: var(--ok-line);
+      color: #b9ffd8;
+      font-weight: 700;
+    }
     .dashboard { display: flex; flex-direction: column; gap: 12px; }
     .status-card {
       background: var(--panel);
@@ -142,6 +183,7 @@ PAGE = """<!doctype html>
       <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
       <button type="button" id="toggle-view">전체보기</button>
     </div>
+    __STATION_SWITCHER__
     __BODY__
   </main>
   <script>
@@ -152,7 +194,7 @@ PAGE = """<!doctype html>
       
       // 1. 현재 URL에서 id 값을 추출 (없으면 기본값 지정)
       const urlParams = new URLSearchParams(window.location.search);
-      const stationId = urlParams.get("id") || "001513355667";
+      const stationId = urlParams.get("id") || "__DEFAULT_ID__";
       
       // 새로고침 링크 동적 유지
       refreshLink.href = window.location.pathname + window.location.search;
@@ -290,6 +332,26 @@ def render_dashboard(raw_html):
         )
     return '<div class="dashboard">' + "".join(cards) + "</div>"
 
+def render_station_switcher(current_id):
+    items = []
+    for station in STATIONS:
+        station_id = station["id"]
+        name = html.escape(station["name"])
+        is_current = station_id == current_id
+        current_attr = ' aria-current="page"' if is_current else ""
+        class_attr = "is-current" if is_current else ""
+        items.append(
+            f'<a class="{class_attr}" '
+            f'href="?id={html.escape(station_id)}"{current_attr}>'
+            f'{name}</a>'
+        )
+    return (
+        '<nav class="station-switcher" aria-label="충전소 전환">'
+        '<span class="station-switcher-label">충전소</span>'
+        + "".join(items)
+        + "</nav>"
+    )
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -304,19 +366,22 @@ class handler(BaseHTTPRequestHandler):
             return
 
         query = parse_qs(parsed.query)
-        detail_id = query.get("id", ["001513355667"])[0].strip()
+        detail_id = query.get("id", [DEFAULT_DETAIL_ID])[0].strip()
 
         session = get_authenticated_session()
         raw_html = fetch_and_parse_detail(session, detail_id)
 
         station = parse_station_name(raw_html)
+        station_label = STATION_NAME_BY_ID.get(detail_id, station)
         formatted_body = render_dashboard(raw_html)
 
         updated = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
 
         response_html = PAGE
         response_html = response_html.replace("__UPDATED__", html.escape(updated))
-        response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station)}</div>' if station else "")
+        response_html = response_html.replace("__DEFAULT_ID__", DEFAULT_DETAIL_ID)
+        response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station_label)}</div>' if station_label else "")
+        response_html = response_html.replace("__STATION_SWITCHER__", render_station_switcher(detail_id))
         response_html = response_html.replace("__BODY__", formatted_body)
 
         data = response_html.encode("utf-8")
