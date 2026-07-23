@@ -1,6 +1,6 @@
 # EV-Line
 
-EV-Line 충전소의 그룹별 상태를 보여주는 Vercel 웹 앱입니다. `api/index.py`가 Vercel Python Function으로 동작합니다.
+EV-Line 충전소의 그룹별 상태와 이번달 충전량(경부하/중부하/최대부하)을 보여주는 Vercel 웹 앱입니다. `api/index.py`가 Vercel Python Function으로 동작합니다.
 
 ## Vercel 배포
 
@@ -31,6 +31,8 @@ https://<project>.vercel.app/?id=001513355667
 ```
 
 각 그룹 카드의 별을 누르면 현재 브라우저에 즐겨찾기가 저장됩니다. `전체보기`/즐겨찾기 보기 상태도 충전소별로 유지됩니다.
+
+상단에는 로그인 세션으로 가져온 `view_new.asp`의 이번달 충전량이 함께 표시됩니다.
 
 배포 상태 확인용 엔드포인트:
 

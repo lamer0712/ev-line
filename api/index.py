@@ -21,6 +21,24 @@ STATIONS = [
     {"id": "184760000001", "name": "동탄역시범호반써밋아파트"},
 ]
 STATION_NAME_BY_ID = {station["id"]: station["name"] for station in STATIONS}
+MONTHLY_USAGE_LABELS = ("경부하", "중부하", "최대부하")
+SEASONAL_TOU_RATES = {
+    "summer": {
+        "경부하": 83.2,
+        "중부하": 137.4,
+        "최대부하": 205.6,
+    },
+    "winter": {
+        "경부하": 100.2,
+        "중부하": 127.7,
+        "최대부하": 179.4,
+    },
+    "other": {
+        "경부하": 85.2,
+        "중부하": 96.0,
+        "최대부하": 99.9,
+    },
+}
 
 PAGE = """<!doctype html>
 <html lang="ko">
@@ -118,6 +136,180 @@ PAGE = """<!doctype html>
       color: #b9ffd8;
       font-weight: 700;
     }
+    .monthly-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(16, 21, 17, 0.98), rgba(9, 12, 10, 0.98));
+    }
+    .monthly-summary-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .monthly-summary-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .monthly-summary-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .monthly-summary-note {
+      color: var(--muted);
+      font-size: 11px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .monthly-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .monthly-usage-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 11px;
+      min-width: 0;
+    }
+    .monthly-usage-label {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .monthly-usage-value {
+      font-size: 20px;
+      font-weight: 850;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .monthly-usage-unit {
+      margin-left: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .monthly-summary.empty {
+      border-color: var(--warn-line);
+      background: var(--warn-bg);
+    }
+    .monthly-summary.empty .monthly-summary-title,
+    .monthly-summary.empty .monthly-summary-subtitle {
+      color: #fff3b0;
+    }
+    .fee-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--ok-line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(0, 41, 20, 0.96), rgba(6, 15, 10, 0.98));
+    }
+    .fee-summary-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .fee-summary-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #b9ffd8;
+    }
+    .fee-summary-subtitle {
+      color: #92c7a9;
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .fee-summary-note {
+      color: #92c7a9;
+      font-size: 11px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .fee-summary-total {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(185, 255, 216, 0.16);
+    }
+    .fee-summary-total-label {
+      font-size: 11px;
+      color: #b9ffd8;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .fee-summary-total-value {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .fee-summary-rate {
+      color: #92c7a9;
+      font-size: 11px;
+      margin-top: 4px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .fee-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .fee-metric-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(185, 255, 216, 0.12);
+      border-radius: 10px;
+      padding: 10px 11px;
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .fee-metric-label {
+      color: #92c7a9;
+      font-size: 10px;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      flex: 1 1 auto;
+    }
+    .fee-metric-value {
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-align: right;
+    }
+    .fee-metric-unit {
+      color: #92c7a9;
+      font-size: 11px;
+      line-height: 1.2;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
     .top-divider {
       border-top: 1px solid var(--line);
       margin: 12px 0 16px;
@@ -189,6 +381,8 @@ PAGE = """<!doctype html>
       <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
       <button type="button" id="toggle-view">전체보기</button>
     </div>
+    __FEE_ESTIMATE__
+    __MONTHLY_USAGE__
     __BODY__
   </main>
   <script>
@@ -280,6 +474,41 @@ def get_authenticated_session():
         pass
     return session
 
+def fetch_monthly_usage(session):
+    url = f"{BASE_URL}/asp/view_new.asp"
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": f"{BASE_URL}/login/login.asp",
+    }
+    try:
+        res = session.get(url, headers=headers, timeout=10)
+        return res.content.decode("euc-kr", errors="ignore")
+    except Exception as e:
+        return f"데이터 패치 실패: {str(e)}"
+
+def get_previous_month_yyyymm():
+    now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+    year = now_kst.year
+    month = now_kst.month - 1
+    if month == 0:
+        year -= 1
+        month = 12
+    return f"{year}-{month:02d}"
+
+def fetch_billing_reference(session, yyyymm):
+    url = f"{BASE_URL}/eacd/bill_202010.asp?ead_date={yyyymm}"
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": f"{BASE_URL}/asp/bill.asp",
+    }
+    try:
+        res = session.get(url, headers=headers, timeout=10)
+        return res.content.decode("euc-kr", errors="ignore")
+    except Exception as e:
+        return f"데이터 패치 실패: {str(e)}"
+
 def fetch_and_parse_detail(session, detail_id):
     url = f"{BASE_URL}/charge/mapdatadetail_202008.asp?id={detail_id}"
     headers = {
@@ -302,6 +531,164 @@ def fetch_and_parse_detail(session, detail_id):
         alert_msg = re.search(r"alert\('([^']+)'\)", raw_html)
         return f"알림: {alert_msg.group(1)}" if alert_msg else "알림 발생"
     return raw_html
+
+def _format_usage_value(value):
+    if value is None:
+        return None
+    text = str(value).strip().replace(",", "")
+    try:
+        number = float(text)
+    except ValueError:
+        return text
+    if number.is_integer():
+        return f"{int(number):,}"
+    return f"{number:,.2f}".rstrip("0").rstrip(".")
+
+def _extract_number_after_label(text, label):
+    patterns = [
+        rf"{label}\s*(?:충전량)?\s*[:：]?\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:kWh|kW|kw|kwh)?",
+        rf"{label}.*?([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:kWh|kW|kw|kwh)?",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            return match.group(1)
+    return None
+
+def _extract_int_from_rows(raw_html, label):
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    for tr in soup.find_all('tr'):
+        cells = [td.get_text(" ", strip=True) for td in tr.find_all('td')]
+        if len(cells) != 3:
+            continue
+        first_cell = cells[0].replace(" ", "")
+        if first_cell != label.replace(" ", ""):
+            continue
+        for candidate in cells[1:]:
+            cleaned = candidate.replace("원", "").replace(",", "").strip()
+            if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", cleaned):
+                return int(float(cleaned))
+    return None
+
+def _current_month_season():
+    now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+    month = now_kst.month
+    if month in (6, 7, 8):
+        return "summer"
+    if month in (11, 12, 1, 2):
+        return "winter"
+    return "other"
+
+def _get_mobile_rate_table():
+    season = _current_month_season()
+    return SEASONAL_TOU_RATES.get(season, {})
+
+def _estimate_total_with_extra_low(usage_by_label, rates, extra_low_usage):
+    low = float(usage_by_label.get("경부하", 0) or 0) + extra_low_usage
+    mid = float(usage_by_label.get("중부하", 0) or 0)
+    peak = float(usage_by_label.get("최대부하", 0) or 0)
+    usage_total = low + mid + peak
+
+    energy_total = (
+        math.floor(low * rates.get("경부하", 0))
+        + math.floor(mid * rates.get("중부하", 0))
+        + math.floor(peak * rates.get("최대부하", 0))
+    )
+    climate_fee = math.floor(usage_total * 9)
+    fuel_fee = math.floor(usage_total * 5)
+    power_fund = math.floor((7740 + energy_total + climate_fee + fuel_fee) * 0.027)
+    vat = math.floor((energy_total + 17740 + climate_fee + fuel_fee) * 0.1)
+    total = energy_total + 17740 + power_fund + climate_fee + fuel_fee + vat
+    return total, usage_total
+
+def _find_additional_usage_for_target_rate(usage_by_label, rates, target_rate, step=0.01, max_extra_usage=1000.0):
+    extra_usage = step
+    while extra_usage <= max_extra_usage:
+        total, usage = _estimate_total_with_extra_low(usage_by_label, rates, extra_usage)
+        if total / usage < target_rate:
+            return extra_usage
+        extra_usage = round(extra_usage + step, 2)
+    return None
+
+def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
+    rates = _get_mobile_rate_table()
+    if not rates:
+        return {}
+
+    usage_total = sum(float(monthly_usage.get(label, 0) or 0) for label in MONTHLY_USAGE_LABELS)
+    if usage_total <= 0:
+        return {}
+
+    energy_by_label = {}
+    usage_by_label = {}
+    for label in MONTHLY_USAGE_LABELS:
+        usage = float(monthly_usage.get(label, 0) or 0)
+        rate = rates.get(label)
+        if rate is None:
+            continue
+        usage_by_label[label] = usage
+        energy_by_label[label] = math.floor(usage * rate)
+
+    energy_total = sum(energy_by_label.values())
+    mobile_basic_fee = 17740
+    climate_fee = math.floor(usage_total * 9)
+    fuel_fee = math.floor(usage_total * 5)
+    power_base_fee = 7740
+    power_fund = math.floor((power_base_fee + energy_total + climate_fee + fuel_fee) * 0.027)
+    vat = math.floor((energy_total + mobile_basic_fee + climate_fee + fuel_fee) * 0.1)
+    total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat
+    extra_usage_250 = _find_additional_usage_for_target_rate(usage_by_label, rates, 250)
+
+    return {
+        "reference_month": reference_month,
+        "season": _current_month_season(),
+        "usage_total": usage_total,
+        "usage_by_label": usage_by_label,
+        "energy_total": energy_total,
+        "energy_by_label": energy_by_label,
+        "mobile_basic_fee": mobile_basic_fee,
+        "power_base_fee": power_base_fee,
+        "power_fund": power_fund,
+        "climate_fee": climate_fee,
+        "fuel_fee": fuel_fee,
+        "vat": vat,
+        "total": total,
+        "extra_usage_250": extra_usage_250,
+        "rates": rates,
+    }
+
+def parse_monthly_usage(raw_html):
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    text = soup.get_text(" ", strip=True)
+
+    # "이번달 충전량" 구간을 우선적으로 탐색하고, 없으면 전체 텍스트에서 찾는다.
+    search_chunks = []
+    for anchor in ("이번달 충전량", "이번달", "월 충전량", "충전량"):
+        idx = text.find(anchor)
+        if idx >= 0:
+            search_chunks.append(text[max(0, idx - 250): idx + 1500])
+            break
+    if not search_chunks:
+        search_chunks.append(text)
+
+    results = {}
+    for label in MONTHLY_USAGE_LABELS:
+        value = None
+        for chunk in search_chunks:
+            value = _extract_number_after_label(chunk, label)
+            if value is not None:
+                break
+        if value is None:
+            for node in soup.find_all(string=re.compile(label)):
+                container_text = node.parent.get_text(" ", strip=True)
+                value = _extract_number_after_label(container_text, label)
+                if value is not None:
+                    break
+        results[label] = _format_usage_value(value)
+
+    if not any(results.values()):
+        return {}
+    return results
 
 def parse_station_name(raw_html):
     soup = BeautifulSoup(raw_html, 'html.parser')
@@ -336,6 +723,109 @@ def render_dashboard(raw_html):
             f'</section>'
         )
     return '<div class="dashboard">' + "".join(cards) + "</div>"
+
+def render_fee_estimate(estimate):
+    if not estimate:
+        return (
+            '<section class="fee-summary">'
+            '<div class="fee-summary-head">'
+            '<div>'
+            '<div class="fee-summary-title">이동형 충전기 예상 요금</div>'
+            '<div class="fee-summary-subtitle">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</div>'
+            '</div>'
+            '<div class="fee-summary-note">여름철 단가표 기준</div>'
+            '</div>'
+            '</section>'
+        )
+    usage_total = f'{estimate["usage_total"]:.2f}'
+    reference_month = html.escape(estimate["reference_month"])
+    effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
+    extra_usage_250 = estimate.get("extra_usage_250")
+    usage_display = f'{estimate["usage_total"]:.2f}'
+    extra_usage_text = f'{extra_usage_250:.2f}' if effective_rate > 250 and extra_usage_250 is not None else ''
+    parts = [
+        '<section class="fee-summary">',
+        '<div class="fee-summary-head">',
+        '<div>',
+        '<div class="fee-summary-title">이동형 충전기 예상 요금</div>',
+        f'<div class="fee-summary-subtitle">{reference_month}</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-summary-grid">',
+        '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">충전량</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{usage_display}</div>',
+        '<div class="fee-metric-unit">kWh</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">예상 총액</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{estimate["total"]:,}</div>',
+        '<div class="fee-metric-unit">원</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">추가 충전량</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{extra_usage_text}</div>',
+        '<div class="fee-metric-unit">kWh</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">환산단가</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{effective_rate:.1f}</div>',
+        '<div class="fee-metric-unit">원/kWh</div>',
+        '</div>',
+        '</div>',
+        '</div>',
+        '</section>',
+    ]
+    return ''.join(parts)
+
+def render_monthly_usage(monthly_usage):
+    if not monthly_usage:
+        return (
+            '<section class="monthly-summary empty">'
+            '<div class="monthly-summary-head">'
+            '<div>'
+            '<div class="monthly-summary-title">이번달 충전량</div>'
+            '<div class="monthly-summary-subtitle">충전량 정보를 불러오지 못했습니다.</div>'
+            '</div>'
+            '<div class="monthly-summary-note">view_new.asp</div>'
+            '</div>'
+            '</section>'
+        )
+
+    cards = []
+    for label in MONTHLY_USAGE_LABELS:
+        value = monthly_usage.get(label)
+        display_value = value if value else "-"
+        cards.append(
+            '<div class="monthly-usage-card">'
+            f'<div class="monthly-usage-label">{html.escape(label)}</div>'
+            f'<div class="monthly-usage-value">{html.escape(display_value)}'
+            '<span class="monthly-usage-unit">kWh</span>'
+            '</div>'
+            '</div>'
+        )
+
+    return (
+        '<section class="monthly-summary">'
+        '<div class="monthly-summary-head">'
+        '<div>'
+        '<div class="monthly-summary-title">이번달 충전량</div>'
+        '<div class="monthly-summary-subtitle">경부하 / 중부하 / 최대부하 기준 누적 충전량</div>'
+        '</div>'
+        '<div class="monthly-summary-note">view_new.asp</div>'
+        '</div>'
+        '<div class="monthly-summary-grid">'
+        + "".join(cards)
+        + '</div>'
+        '</section>'
+    )
 
 def render_station_switcher(current_id):
     items = []
@@ -375,10 +865,17 @@ class handler(BaseHTTPRequestHandler):
 
         session = get_authenticated_session()
         raw_html = fetch_and_parse_detail(session, detail_id)
+        monthly_usage_html = fetch_monthly_usage(session)
+        reference_month = get_previous_month_yyyymm()
+        billing_reference_html = fetch_billing_reference(session, reference_month)
 
         station = parse_station_name(raw_html)
         station_label = STATION_NAME_BY_ID.get(detail_id, station)
         formatted_body = render_dashboard(raw_html)
+        monthly_usage = parse_monthly_usage(monthly_usage_html)
+        formatted_monthly_usage = render_monthly_usage(monthly_usage)
+        fee_estimate = estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month)
+        formatted_fee_estimate = render_fee_estimate(fee_estimate)
 
         updated = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -387,6 +884,8 @@ class handler(BaseHTTPRequestHandler):
         response_html = response_html.replace("__DEFAULT_ID__", DEFAULT_DETAIL_ID)
         response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station_label)}</div>' if station_label else "")
         response_html = response_html.replace("__STATION_SWITCHER__", render_station_switcher(detail_id))
+        response_html = response_html.replace("__FEE_ESTIMATE__", formatted_fee_estimate)
+        response_html = response_html.replace("__MONTHLY_USAGE__", formatted_monthly_usage)
         response_html = response_html.replace("__BODY__", formatted_body)
 
         data = response_html.encode("utf-8")
