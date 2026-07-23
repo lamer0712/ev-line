@@ -127,18 +127,18 @@ PAGE = """<!doctype html>
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 16px;
+      padding: 12px;
       position: relative;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
     .status-card.ok { background: var(--ok-bg); border-color: var(--ok-line); }
     .status-card.warn { background: var(--warn-bg); border-color: var(--warn-line); }
     .status-card.bad { background: var(--bad-bg); border-color: var(--bad-line); }
     .group {
       color: var(--muted);
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 820;
       letter-spacing: 0;
     }
@@ -147,7 +147,7 @@ PAGE = """<!doctype html>
     .status-card.bad .group { color: #e57373; }
     .state {
       color: var(--fg);
-      font-size: 36px;
+      font-size: 29px;
       font-weight: 880;
       letter-spacing: 0;
     }
@@ -166,8 +166,8 @@ PAGE = """<!doctype html>
     .status-card.is-favorite .favorite { color: var(--fav); }
     @media (max-width: 520px) {
       body { padding: 12px; }
-      .group { font-size: 20px; }
-      .state { font-size: 28px; }
+      .group { font-size: 18px; }
+      .state { font-size: 24px; }
     }
   </style>
 </head>
