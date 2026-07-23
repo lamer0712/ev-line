@@ -317,50 +317,6 @@ PAGE = """<!doctype html>
       margin-left: 4px;
       white-space: nowrap;
     }
-    .fee-mission-card {
-      grid-column: 1 / -1;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(185, 255, 216, 0.12);
-      border-radius: 10px;
-      padding: 10px 11px;
-    }
-    .fee-mission-title {
-      color: #92c7a9;
-      font-size: 10px;
-      letter-spacing: 0.02em;
-      margin-bottom: 8px;
-    }
-    .fee-mission-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .fee-mission-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .fee-mission-label {
-      color: #e2f8e9;
-      font-size: 12px;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-    .fee-mission-value {
-      color: #f7fff9;
-      font-size: 18px;
-      font-weight: 850;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-      text-align: right;
-    }
-    .fee-mission-unit {
-      color: #92c7a9;
-      font-size: 11px;
-      margin-left: 4px;
-      white-space: nowrap;
-    }
     .top-divider {
       border-top: 1px solid var(--line);
       margin: 12px 0 16px;
@@ -691,13 +647,7 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
     power_fund = math.floor((power_base_fee + energy_total + climate_fee + fuel_fee) * 0.027)
     vat = math.floor((energy_total + mobile_basic_fee + climate_fee + fuel_fee) * 0.1)
     total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat
-    target_rates = (324, 300, 250, 200, 150)
-    extra_usage_by_target = {}
-    for target in target_rates:
-        if total / usage_total <= target:
-            extra_usage_by_target[target] = None
-        else:
-            extra_usage_by_target[target] = _find_additional_usage_for_target_rate(usage_by_label, rates, target)
+    extra_usage_250 = _find_additional_usage_for_target_rate(usage_by_label, rates, 250)
 
     return {
         "reference_month": reference_month,
@@ -713,7 +663,7 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
         "fuel_fee": fuel_fee,
         "vat": vat,
         "total": total,
-        "extra_usage_by_target": extra_usage_by_target,
+        "extra_usage_250": extra_usage_250,
         "rates": rates,
     }
 
@@ -800,18 +750,8 @@ def render_fee_estimate(estimate):
     usage_total = f'{estimate["usage_total"]:.2f}'
     reference_month = html.escape(estimate["reference_month"])
     effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
-    extra_usage_by_target = estimate.get("extra_usage_by_target", {})
-    mission_rows = []
-    for target in (324, 300, 250, 200, 150):
-        value = extra_usage_by_target.get(target)
-        value_text = f'{value:.2f}' if value is not None else ''
-        mission_rows.append(
-            '<div class="fee-mission-row">'
-            f'<div class="fee-mission-label">{target}원</div>'
-            f'<div class="fee-mission-value">{value_text}</div>'
-            '<div class="fee-mission-unit">kWh</div>'
-            '</div>'
-        )
+    extra_usage_250 = estimate.get("extra_usage_250")
+    extra_usage_text = f'{extra_usage_250:.2f}' if effective_rate > 250 and extra_usage_250 is not None else ''
     parts = [
         '<section class="fee-summary">',
         '<div class="fee-summary-head">',
@@ -835,16 +775,17 @@ def render_fee_estimate(estimate):
         '</div>',
         '</div>',
         '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">추가 충전량</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{extra_usage_text}</div>',
+        '<div class="fee-metric-unit">kWh</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-metric-card">',
         '<div class="fee-metric-label">환산단가</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
         f'<div class="fee-metric-value">{effective_rate:.1f}</div>',
         '<div class="fee-metric-unit">원/kWh</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-mission-card">',
-        '<div class="fee-mission-title">목표</div>',
-        '<div class="fee-mission-list">',
-        ''.join(mission_rows),
         '</div>',
         '</div>',
         '</div>',
