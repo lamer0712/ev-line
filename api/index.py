@@ -224,6 +224,13 @@ PAGE = """<!doctype html>
       gap: 8px;
       align-items: flex-start;
     }
+    .fee-summary-head-line {
+      width: 100%;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
     .fee-summary-title {
       font-size: 15px;
       font-weight: 800;
@@ -310,6 +317,50 @@ PAGE = """<!doctype html>
       margin-left: 4px;
       white-space: nowrap;
     }
+    .fee-mission-card {
+      grid-column: 1 / -1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(185, 255, 216, 0.12);
+      border-radius: 10px;
+      padding: 10px 11px;
+    }
+    .fee-mission-title {
+      color: #92c7a9;
+      font-size: 10px;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+    .fee-mission-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .fee-mission-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .fee-mission-label {
+      color: #e2f8e9;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .fee-mission-value {
+      color: #f7fff9;
+      font-size: 18px;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-align: right;
+    }
+    .fee-mission-unit {
+      color: #92c7a9;
+      font-size: 11px;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
     .top-divider {
       border-top: 1px solid var(--line);
       margin: 12px 0 16px;
@@ -382,7 +433,6 @@ PAGE = """<!doctype html>
       <button type="button" id="toggle-view">전체보기</button>
     </div>
     __FEE_ESTIMATE__
-    __MONTHLY_USAGE__
     __BODY__
   </main>
   <script>
@@ -495,6 +545,10 @@ def get_previous_month_yyyymm():
         year -= 1
         month = 12
     return f"{year}-{month:02d}"
+
+def get_current_month_yyyymm():
+    now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+    return f"{now_kst.year}-{now_kst.month:02d}"
 
 def fetch_billing_reference(session, yyyymm):
     url = f"{BASE_URL}/eacd/bill_202010.asp?ead_date={yyyymm}"
@@ -637,7 +691,13 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
     power_fund = math.floor((power_base_fee + energy_total + climate_fee + fuel_fee) * 0.027)
     vat = math.floor((energy_total + mobile_basic_fee + climate_fee + fuel_fee) * 0.1)
     total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat
-    extra_usage_250 = _find_additional_usage_for_target_rate(usage_by_label, rates, 250)
+    target_rates = (324, 300, 250, 200, 150)
+    extra_usage_by_target = {}
+    for target in target_rates:
+        if total / usage_total <= target:
+            extra_usage_by_target[target] = None
+        else:
+            extra_usage_by_target[target] = _find_additional_usage_for_target_rate(usage_by_label, rates, target)
 
     return {
         "reference_month": reference_month,
@@ -653,7 +713,7 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
         "fuel_fee": fuel_fee,
         "vat": vat,
         "total": total,
-        "extra_usage_250": extra_usage_250,
+        "extra_usage_by_target": extra_usage_by_target,
         "rates": rates,
     }
 
@@ -729,7 +789,7 @@ def render_fee_estimate(estimate):
         return (
             '<section class="fee-summary">'
             '<div class="fee-summary-head">'
-            '<div>'
+            '<div class="fee-summary-head-line">'
             '<div class="fee-summary-title">이동형 충전기 예상 요금</div>'
             '<div class="fee-summary-subtitle">이번달 사용량을 기준으로 요금을 계산하지 못했습니다.</div>'
             '</div>'
@@ -740,25 +800,27 @@ def render_fee_estimate(estimate):
     usage_total = f'{estimate["usage_total"]:.2f}'
     reference_month = html.escape(estimate["reference_month"])
     effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
-    extra_usage_250 = estimate.get("extra_usage_250")
     usage_display = f'{estimate["usage_total"]:.2f}'
-    extra_usage_text = f'{extra_usage_250:.2f}' if effective_rate > 250 and extra_usage_250 is not None else ''
+    extra_usage_by_target = estimate.get("extra_usage_by_target", {})
+    mission_rows = []
+    for target in (324, 300, 250, 200, 150):
+        value = extra_usage_by_target.get(target)
+        value_text = f'{value:.2f}' if value is not None else ''
+        mission_rows.append(
+            '<div class="fee-mission-row">'
+            f'<div class="fee-mission-label">{target}원</div>'
+            f'<div class="fee-mission-value">{value_text}</div>'
+            '<div class="fee-mission-unit">kWh</div>'
+            '</div>'
+        )
     parts = [
         '<section class="fee-summary">',
         '<div class="fee-summary-head">',
-        '<div>',
+        '<div class="fee-summary-head-line">',
         '<div class="fee-summary-title">이동형 충전기 예상 요금</div>',
         f'<div class="fee-summary-subtitle">{reference_month}</div>',
         '</div>',
-        '</div>',
         '<div class="fee-summary-grid">',
-        '<div class="fee-metric-card">',
-        '<div class="fee-metric-label">충전량</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{usage_display}</div>',
-        '<div class="fee-metric-unit">kWh</div>',
-        '</div>',
-        '</div>',
         '<div class="fee-metric-card">',
         '<div class="fee-metric-label">예상 총액</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
@@ -767,17 +829,16 @@ def render_fee_estimate(estimate):
         '</div>',
         '</div>',
         '<div class="fee-metric-card">',
-        '<div class="fee-metric-label">추가 충전량</div>',
-        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
-        f'<div class="fee-metric-value">{extra_usage_text}</div>',
-        '<div class="fee-metric-unit">kWh</div>',
-        '</div>',
-        '</div>',
-        '<div class="fee-metric-card">',
         '<div class="fee-metric-label">환산단가</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
         f'<div class="fee-metric-value">{effective_rate:.1f}</div>',
         '<div class="fee-metric-unit">원/kWh</div>',
+        '</div>',
+        '</div>',
+        '<div class="fee-mission-card">',
+        '<div class="fee-mission-title">목표</div>',
+        '<div class="fee-mission-list">',
+        ''.join(mission_rows),
         '</div>',
         '</div>',
         '</div>',
@@ -866,14 +927,13 @@ class handler(BaseHTTPRequestHandler):
         session = get_authenticated_session()
         raw_html = fetch_and_parse_detail(session, detail_id)
         monthly_usage_html = fetch_monthly_usage(session)
-        reference_month = get_previous_month_yyyymm()
+        reference_month = get_current_month_yyyymm()
         billing_reference_html = fetch_billing_reference(session, reference_month)
 
         station = parse_station_name(raw_html)
         station_label = STATION_NAME_BY_ID.get(detail_id, station)
         formatted_body = render_dashboard(raw_html)
         monthly_usage = parse_monthly_usage(monthly_usage_html)
-        formatted_monthly_usage = render_monthly_usage(monthly_usage)
         fee_estimate = estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month)
         formatted_fee_estimate = render_fee_estimate(fee_estimate)
 
@@ -885,7 +945,6 @@ class handler(BaseHTTPRequestHandler):
         response_html = response_html.replace("__STATION__", f'<div class="station">{html.escape(station_label)}</div>' if station_label else "")
         response_html = response_html.replace("__STATION_SWITCHER__", render_station_switcher(detail_id))
         response_html = response_html.replace("__FEE_ESTIMATE__", formatted_fee_estimate)
-        response_html = response_html.replace("__MONTHLY_USAGE__", formatted_monthly_usage)
         response_html = response_html.replace("__BODY__", formatted_body)
 
         data = response_html.encode("utf-8")
