@@ -118,6 +118,10 @@ PAGE = """<!doctype html>
       color: #b9ffd8;
       font-weight: 700;
     }
+    .top-divider {
+      border-top: 1px solid var(--line);
+      margin: 12px 0 16px;
+    }
     .dashboard { display: flex; flex-direction: column; gap: 12px; }
     .status-card {
       background: var(--panel);
@@ -169,6 +173,8 @@ PAGE = """<!doctype html>
 </head>
 <body>
   <main>
+    __STATION_SWITCHER__
+    <div class="top-divider" aria-hidden="true"></div>
     <header>
       <div>
         <h1>EV-Line</h1>
@@ -183,7 +189,6 @@ PAGE = """<!doctype html>
       <button type="button" id="choose-station" style="display: none;">충전소 선택</button>
       <button type="button" id="toggle-view">전체보기</button>
     </div>
-    __STATION_SWITCHER__
     __BODY__
   </main>
   <script>
