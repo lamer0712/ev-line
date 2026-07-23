@@ -607,9 +607,9 @@ def render_fee_estimate(estimate):
     parts = [
         '<section class="fee-summary">',
         '<div class="fee-summary-line">',
-        f'<span class="fee-summary-item"><span class="fee-summary-label">충전량</span><span class="fee-summary-value">: {usage_total} kWh</span></span>',
-        f'<span class="fee-summary-item"><span class="fee-summary-label">금액</span><span class="fee-summary-value">: {estimate["total"]:,} 원</span></span>',
-        f'<span class="fee-summary-item"><span class="fee-summary-label">단가</span><span class="fee-summary-value">: {effective_rate:.1f} 원/kWh</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">총충전량</span><span class="fee-summary-value">: {usage_total} kWh</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">예상금액</span><span class="fee-summary-value">: {estimate["total"]:,} 원</span></span>',
+        f'<span class="fee-summary-item"><span class="fee-summary-label">환산단가</span><span class="fee-summary-value">: {effective_rate:.1f} 원/kWh</span></span>',
         f'<span class="fee-summary-item"><span class="fee-summary-label">추가충전</span><span class="fee-summary-value">: {extra_usage_text} kWh</span></span>',
         '</div>',
         '</section>',
