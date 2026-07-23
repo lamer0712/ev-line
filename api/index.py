@@ -800,7 +800,6 @@ def render_fee_estimate(estimate):
     usage_total = f'{estimate["usage_total"]:.2f}'
     reference_month = html.escape(estimate["reference_month"])
     effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
-    usage_display = f'{estimate["usage_total"]:.2f}'
     extra_usage_by_target = estimate.get("extra_usage_by_target", {})
     mission_rows = []
     for target in (324, 300, 250, 200, 150):
@@ -821,6 +820,13 @@ def render_fee_estimate(estimate):
         f'<div class="fee-summary-subtitle">{reference_month}</div>',
         '</div>',
         '<div class="fee-summary-grid">',
+        '<div class="fee-metric-card">',
+        '<div class="fee-metric-label">총 충전량</div>',
+        '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
+        f'<div class="fee-metric-value">{usage_total}</div>',
+        '<div class="fee-metric-unit">kWh</div>',
+        '</div>',
+        '</div>',
         '<div class="fee-metric-card">',
         '<div class="fee-metric-label">예상 총액</div>',
         '<div style="display:flex; align-items:baseline; gap:4px; margin-left:auto;">',
