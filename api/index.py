@@ -474,6 +474,12 @@ def _find_additional_usage_for_target_rate(usage_by_label, rates, target_rate, s
         extra_usage = round(extra_usage + step, 2)
     return None
 
+def _select_extra_usage_target(effective_rate):
+    for target in (324, 300, 250, 200, 150):
+        if effective_rate >= target:
+            return target
+    return None
+
 def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
     rates = _get_mobile_rate_table()
     if not rates:
@@ -501,7 +507,11 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
     power_fund = math.floor((power_base_fee + energy_total + climate_fee + fuel_fee) * 0.027)
     vat = math.floor((energy_total + mobile_basic_fee + climate_fee + fuel_fee) * 0.1)
     total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat
-    extra_usage_250 = _find_additional_usage_for_target_rate(usage_by_label, rates, 250)
+    effective_rate = total / usage_total if usage_total else 0
+    extra_usage_target = _select_extra_usage_target(effective_rate)
+    extra_usage = None
+    if extra_usage_target is not None:
+        extra_usage = _find_additional_usage_for_target_rate(usage_by_label, rates, extra_usage_target)
 
     return {
         "reference_month": reference_month,
@@ -517,7 +527,9 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
         "fuel_fee": fuel_fee,
         "vat": vat,
         "total": total,
-        "extra_usage_250": extra_usage_250,
+        "effective_rate": effective_rate,
+        "extra_usage_target": extra_usage_target,
+        "extra_usage": extra_usage,
         "rates": rates,
     }
 
@@ -601,9 +613,9 @@ def render_fee_estimate(estimate):
             '</section>'
         )
     usage_total = f'{estimate["usage_total"]:.2f}'
-    effective_rate = estimate["total"] / estimate["usage_total"] if estimate.get("usage_total") else 0
-    extra_usage_250 = estimate.get("extra_usage_250")
-    extra_usage_text = f'{extra_usage_250:.2f}' if extra_usage_250 is not None else '-'
+    effective_rate = estimate.get("effective_rate", 0)
+    extra_usage = estimate.get("extra_usage")
+    extra_usage_text = f'{extra_usage:.2f}' if extra_usage is not None else '-'
     parts = [
         '<section class="fee-summary">',
         '<div class="fee-summary-line">',
