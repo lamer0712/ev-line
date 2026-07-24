@@ -542,7 +542,7 @@ def _find_additional_usage_for_target_rate(usage_by_label, rates, target_rate, s
     return None
 
 def _select_extra_usage_target(effective_rate):
-    for target in (324, 300, 250, 200, 150):
+    for target in (319, 300, 250, 200, 150):
         if effective_rate >= target:
             return target
     return None
