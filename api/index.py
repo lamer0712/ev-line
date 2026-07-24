@@ -15,6 +15,7 @@ EVLINE_USER_ID = os.environ.get("EVLINE_USER_ID", "")
 EVLINE_USER_PWD = os.environ.get("EVLINE_USER_PWD", "")
 BASE_URL = "https://www.ev-line.co.kr"
 DEFAULT_DETAIL_ID = "001513355667"
+STATIC_CHARGER_CARD_NO = "1098115100234728"
 STATIONS = [
     {"id": "001513355667", "name": "동탄시범계룡리슈빌아파트"},
     {"id": "001544793284", "name": "네이버주식회사"},
@@ -405,6 +406,19 @@ def fetch_billing_reference(session, yyyymm):
     except Exception as e:
         return f"데이터 패치 실패: {str(e)}"
 
+def fetch_static_charger_total(session, card_no, yyyymm):
+    url = f"{BASE_URL}/asp/view_static_charger_list.asp?{urlencode({'card_no': card_no, 'serchdate': yyyymm})}"
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": f"{BASE_URL}/asp/view_new.asp",
+    }
+    try:
+        res = session.get(url, headers=headers, timeout=10)
+        return res.content.decode("euc-kr", errors="ignore")
+    except Exception as e:
+        return f"데이터 패치 실패: {str(e)}"
+
 def fetch_and_parse_detail(session, detail_id):
     url = f"{BASE_URL}/charge/mapdatadetail_202008.asp?id={detail_id}"
     headers = {
@@ -466,6 +480,20 @@ def _extract_int_from_rows(raw_html, label):
                 return int(float(cleaned))
     return None
 
+def _extract_static_charger_monthly_totals(raw_html):
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    for tr in soup.find_all('tr'):
+        text = tr.get_text(" ", strip=True)
+        if "합계" not in text:
+            continue
+        usage_match = re.search(r"합계.*?([0-9][0-9,]*(?:\.[0-9]+)?)\s*kW", text, re.IGNORECASE | re.DOTALL)
+        amount_match = re.search(r"합계.*?([0-9][0-9,]*)\s*원", text, re.IGNORECASE | re.DOTALL)
+        usage_total = float(usage_match.group(1).replace(",", "")) if usage_match else 0.0
+        amount_total = int(amount_match.group(1).replace(",", "")) if amount_match else 0
+        if usage_match or amount_match:
+            return usage_total, amount_total
+    return 0.0, 0
+
 def _current_month_season():
     now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
     month = now_kst.month
@@ -479,28 +507,35 @@ def _get_mobile_rate_table():
     season = _current_month_season()
     return SEASONAL_TOU_RATES.get(season, {})
 
-def _estimate_total_with_extra_low(usage_by_label, rates, extra_low_usage):
+def _estimate_total_with_extra_low(usage_by_label, rates, extra_low_usage, static_usage_total=0.0, static_amount_total=0):
     low = float(usage_by_label.get("경부하", 0) or 0) + extra_low_usage
     mid = float(usage_by_label.get("중부하", 0) or 0)
     peak = float(usage_by_label.get("최대부하", 0) or 0)
-    usage_total = low + mid + peak
+    mobile_usage_total = low + mid + peak
 
     energy_total = (
         math.floor(low * rates.get("경부하", 0))
         + math.floor(mid * rates.get("중부하", 0))
         + math.floor(peak * rates.get("최대부하", 0))
     )
-    climate_fee = math.floor(usage_total * 9)
-    fuel_fee = math.floor(usage_total * 5)
+    climate_fee = math.floor(mobile_usage_total * 9)
+    fuel_fee = math.floor(mobile_usage_total * 5)
     power_fund = math.floor((7740 + energy_total + climate_fee + fuel_fee) * 0.027)
     vat = math.floor((energy_total + 17740 + climate_fee + fuel_fee) * 0.1)
-    total = energy_total + 17740 + power_fund + climate_fee + fuel_fee + vat
+    total = energy_total + 17740 + power_fund + climate_fee + fuel_fee + vat + int(static_amount_total or 0)
+    usage_total = mobile_usage_total + float(static_usage_total or 0)
     return total, usage_total
 
-def _find_additional_usage_for_target_rate(usage_by_label, rates, target_rate, step=0.01, max_extra_usage=1000.0):
+def _find_additional_usage_for_target_rate(usage_by_label, rates, target_rate, static_usage_total=0.0, static_amount_total=0, step=0.01, max_extra_usage=1000.0):
     extra_usage = step
     while extra_usage <= max_extra_usage:
-        total, usage = _estimate_total_with_extra_low(usage_by_label, rates, extra_usage)
+        total, usage = _estimate_total_with_extra_low(
+            usage_by_label,
+            rates,
+            extra_usage,
+            static_usage_total=static_usage_total,
+            static_amount_total=static_amount_total,
+        )
         if total / usage < target_rate:
             return extra_usage
         extra_usage = round(extra_usage + step, 2)
@@ -512,7 +547,7 @@ def _select_extra_usage_target(effective_rate):
             return target
     return None
 
-def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
+def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month, static_usage_total=0.0, static_amount_total=0):
     rates = _get_mobile_rate_table()
     if not rates:
         return {}
@@ -538,12 +573,19 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
     power_base_fee = 7740
     power_fund = math.floor((power_base_fee + energy_total + climate_fee + fuel_fee) * 0.027)
     vat = math.floor((energy_total + mobile_basic_fee + climate_fee + fuel_fee) * 0.1)
-    total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat
+    total = energy_total + mobile_basic_fee + power_fund + climate_fee + fuel_fee + vat + int(static_amount_total or 0)
+    usage_total += float(static_usage_total or 0)
     effective_rate = total / usage_total if usage_total else 0
     extra_usage_target = _select_extra_usage_target(effective_rate)
     extra_usage = None
     if extra_usage_target is not None:
-        extra_usage = _find_additional_usage_for_target_rate(usage_by_label, rates, extra_usage_target)
+        extra_usage = _find_additional_usage_for_target_rate(
+            usage_by_label,
+            rates,
+            extra_usage_target,
+            static_usage_total=static_usage_total,
+            static_amount_total=static_amount_total,
+        )
 
     return {
         "reference_month": reference_month,
@@ -562,6 +604,8 @@ def estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month):
         "effective_rate": effective_rate,
         "extra_usage_target": extra_usage_target,
         "extra_usage": extra_usage,
+        "static_usage_total": float(static_usage_total or 0),
+        "static_amount_total": int(static_amount_total or 0),
         "rates": rates,
     }
 
@@ -744,12 +788,20 @@ class handler(BaseHTTPRequestHandler):
         monthly_usage_html = fetch_monthly_usage(session)
         reference_month = get_current_month_yyyymm()
         billing_reference_html = fetch_billing_reference(session, reference_month)
+        static_charger_html = fetch_static_charger_total(session, STATIC_CHARGER_CARD_NO, reference_month)
 
         station = parse_station_name(raw_html)
         station_label = STATION_NAME_BY_ID.get(detail_id, station)
         formatted_body = render_dashboard(raw_html)
         monthly_usage = parse_monthly_usage(monthly_usage_html)
-        fee_estimate = estimate_mobile_fee(monthly_usage, billing_reference_html, reference_month)
+        static_usage_total, static_amount_total = _extract_static_charger_monthly_totals(static_charger_html)
+        fee_estimate = estimate_mobile_fee(
+            monthly_usage,
+            billing_reference_html,
+            reference_month,
+            static_usage_total=static_usage_total,
+            static_amount_total=static_amount_total,
+        )
         formatted_fee_estimate = render_fee_estimate(fee_estimate)
 
         updated = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
